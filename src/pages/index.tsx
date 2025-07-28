@@ -5,38 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { MessageActions } from "@/components/message-actions";
-import {
-  SettingsModal,
-  SettingsConfig,
-  defaultSettings,
-} from "@/components/settings-modal";
+import { SettingsModal, SettingsConfig, defaultSettings } from "@/components/settings-modal";
+import { ChatRename } from "@/components/chat-rename";
+import { APP_CONFIG, DEFAULT_SETTINGS, getAllModels } from "@/config/app-config";
 import { useDropzone } from "react-dropzone";
-import {
-  Send,
-  Upload,
-  Bot,
-  User,
-  FileText,
-  Image as ImageIcon,
+import { 
+  Send, 
+  Upload, 
+  Bot, 
+  User, 
+  FileText, 
+  Image as ImageIcon, 
   Loader2,
   Sparkles,
   Brain,
@@ -50,13 +36,13 @@ import {
   X,
   Lightbulb,
   Mic,
-  MicOff,
+  MicOff
 } from "lucide-react";
 import { toast } from "sonner";
 
 interface Message {
   id: string;
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
   files?: UploadedFile[];
@@ -77,74 +63,49 @@ interface ChatSession {
   messageCount: number;
 }
 
-const models = [
-  {
-    id: "gpt-4",
-    name: "GPT-4",
-    provider: "OpenAI",
-    icon: Brain,
-    color: "bg-green-500",
-  },
-  {
-    id: "gpt-3.5-turbo",
-    name: "GPT-3.5 Turbo",
-    provider: "OpenAI",
-    icon: Zap,
-    color: "bg-blue-500",
-  },
-  {
-    id: "gemini-pro",
-    name: "Gemini Pro",
-    provider: "Google",
-    icon: Sparkles,
-    color: "bg-purple-500",
-  },
-  {
-    id: "claude-3",
-    name: "Claude 3",
-    provider: "Anthropic",
-    icon: Brain,
-    color: "bg-orange-500",
-  },
-  {
-    id: "ollama-llama2",
-    name: "Llama 2",
-    provider: "Ollama",
-    icon: Globe,
-    color: "bg-red-500",
-  },
-  {
-    id: "ollama-mistral",
-    name: "Mistral",
-    provider: "Ollama",
-    icon: Globe,
-    color: "bg-indigo-500",
-  },
-];
+// Get models from config with icons and colors
+const getModelIcon = (provider: string) => {
+  switch (provider.toLowerCase()) {
+    case 'openai': return Brain;
+    case 'gemini': return Sparkles;
+    case 'claude': return Brain;
+    case 'ollama': return Globe;
+    default: return Bot;
+  }
+};
 
-const predefinedPrompts = [
-  "Translate Itinerary",
-  "Extract full detailed itinerary",
-  "Generate a quotation",
-  "Extract all inclusion",
-  "Extract all exclusions",
-];
+const getModelColor = (provider: string) => {
+  switch (provider.toLowerCase()) {
+    case 'openai': return 'bg-green-500';
+    case 'gemini': return 'bg-purple-500';
+    case 'claude': return 'bg-orange-500';
+    case 'ollama': return 'bg-red-500';
+    default: return 'bg-gray-500';
+  }
+};
+
+const models = getAllModels().map(model => ({
+  ...model,
+  icon: getModelIcon(model.provider),
+  color: getModelColor(model.provider)
+}));
+
+const predefinedPrompts = APP_CONFIG.predefinedPrompts;
 
 export default function ChatApp() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [selectedModel, setSelectedModel] = useState("gpt-4");
+  const [input, setInput] = useState('');
+  const [selectedModel, setSelectedModel] = useState('gpt-4');
   const [isLoading, setIsLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
-  const [editInput, setEditInput] = useState("");
+  const [editInput, setEditInput] = useState('');
   const [isListening, setIsListening] = useState(false);
-  const [speechRecognition, setSpeechRecognition] =
-    useState<SpeechRecognition | null>(null);
-  const [settings, setSettings] = useState<SettingsConfig>(defaultSettings);
+  const [speechRecognition, setSpeechRecognition] = useState<SpeechRecognition | null>(null);
+  const [settings, setSettings] = useState<SettingsConfig>(DEFAULT_SETTINGS);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -163,13 +124,13 @@ export default function ChatApp() {
   const loadChatSessions = async () => {
     setIsLoadingSessions(true);
     try {
-      const response = await fetch("/api/chat-sessions");
+      const response = await fetch('/api/chat-sessions');
       if (response.ok) {
         const data = await response.json();
         setChatSessions(data.sessions || []);
       }
     } catch (error) {
-      console.error("Failed to load chat sessions:", error);
+      console.error('Failed to load chat sessions:', error);
     } finally {
       setIsLoadingSessions(false);
     }
@@ -177,13 +138,13 @@ export default function ChatApp() {
 
   const createNewChat = async () => {
     try {
-      const response = await fetch("/api/chat-sessions", {
-        method: "POST",
+      const response = await fetch('/api/chat-sessions', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          title: "New Chat",
+          title: 'New Chat',
         }),
       });
 
@@ -193,10 +154,10 @@ export default function ChatApp() {
         setMessages([]);
         setUploadedFiles([]);
         await loadChatSessions();
-        toast.success("New chat created");
+        toast.success('New chat created');
       }
     } catch (error) {
-      toast.error("Failed to create new chat");
+      toast.error('Failed to create new chat');
     }
   };
 
@@ -210,18 +171,15 @@ export default function ChatApp() {
         setUploadedFiles([]);
       }
     } catch (error) {
-      toast.error("Failed to load chat session");
+      toast.error('Failed to load chat session');
     }
   };
 
   const deleteChatSession = async (sessionId: string) => {
     try {
-      const response = await fetch(
-        `/api/chat-sessions?sessionId=${sessionId}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`/api/chat-sessions?sessionId=${sessionId}`, {
+        method: 'DELETE',
+      });
 
       if (response.ok) {
         if (currentSessionId === sessionId) {
@@ -229,21 +187,31 @@ export default function ChatApp() {
           setMessages([]);
         }
         await loadChatSessions();
-        toast.success("Chat deleted");
+        toast.success('Chat deleted');
       }
     } catch (error) {
-      toast.error("Failed to delete chat");
+      toast.error('Failed to delete chat');
     }
+  };
+
+  const handleChatRename = (sessionId: string, newTitle: string) => {
+    setChatSessions(prev => 
+      prev.map(session => 
+        session.id === sessionId 
+          ? { ...session, title: newTitle, updatedAt: new Date().toISOString() }
+          : session
+      )
+    );
   };
 
   const saveMessageToSession = async (message: Message) => {
     if (!currentSessionId) return;
 
     try {
-      await fetch("/api/chat-sessions", {
-        method: "PUT",
+      await fetch('/api/chat-sessions', {
+        method: 'PUT',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           sessionId: currentSessionId,
@@ -251,24 +219,24 @@ export default function ChatApp() {
         }),
       });
     } catch (error) {
-      console.error("Failed to save message to session:", error);
+      console.error('Failed to save message to session:', error);
     }
   };
 
   const onDrop = async (acceptedFiles: File[]) => {
     const newFiles: UploadedFile[] = [];
-
+    
     for (const file of acceptedFiles) {
       const formData = new FormData();
-      formData.append("file", file);
-      formData.append("settings", JSON.stringify(settings));
-
+      formData.append('file', file);
+      formData.append('settings', JSON.stringify(settings));
+      
       try {
-        const response = await fetch("/api/upload", {
-          method: "POST",
+        const response = await fetch('/api/upload', {
+          method: 'POST',
           body: formData,
         });
-
+        
         if (response.ok) {
           const result = await response.json();
           newFiles.push({
@@ -280,33 +248,30 @@ export default function ChatApp() {
           toast.success(`${file.name} uploaded and processed successfully`);
         } else {
           const error = await response.json();
-          toast.error(
-            `Failed to upload ${file.name}: ${error.details || error.error}`
-          );
+          toast.error(`Failed to upload ${file.name}: ${error.details || error.error}`);
         }
       } catch (error) {
         toast.error(`Error uploading ${file.name}`);
       }
     }
-
-    setUploadedFiles((prev) => [...prev, ...newFiles]);
+    
+    setUploadedFiles(prev => [...prev, ...newFiles]);
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      "text/plain": [".txt"],
-      "application/pdf": [".pdf"],
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        [".docx"],
-      "application/msword": [".doc"],
-      "text/html": [".html", ".htm"],
+      'text/plain': ['.txt'],
+      'application/pdf': ['.pdf'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/msword': ['.doc'],
+      'text/html': ['.html', '.htm'],
     },
     multiple: true,
   });
 
   const removeFile = (index: number) => {
-    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const sendMessage = async () => {
@@ -319,14 +284,14 @@ export default function ChatApp() {
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      role: "user",
+      role: 'user',
       content: input,
       timestamp: new Date(),
       files: uploadedFiles.length > 0 ? [...uploadedFiles] : undefined,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
     setUploadedFiles([]);
     setIsLoading(true);
 
@@ -334,13 +299,13 @@ export default function ChatApp() {
     await saveMessageToSession(userMessage);
 
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
+      const response = await fetch('/api/chat', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: [userMessage], // Send only the new message
+          messages: [...messages, userMessage], // Send full chat history including new message
           model: selectedModel,
           sessionId: currentSessionId,
           settings: settings,
@@ -351,12 +316,12 @@ export default function ChatApp() {
         const result = await response.json();
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
-          role: "assistant",
+          role: 'assistant',
           content: result.content,
           timestamp: new Date(),
         };
-        setMessages((prev) => [...prev, assistantMessage]);
-
+        setMessages(prev => [...prev, assistantMessage]);
+        
         // Save assistant message to session
         await saveMessageToSession(assistantMessage);
         await loadChatSessions(); // Refresh sessions to update message count
@@ -365,24 +330,24 @@ export default function ChatApp() {
         toast.error(`Failed to get response: ${error.details || error.error}`);
       }
     } catch (error) {
-      toast.error("Error sending message");
+      toast.error('Error sending message');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
   };
 
   const handleRetryMessage = async (message: Message) => {
-    if (message.role !== "user") return;
+    if (message.role !== 'user') return;
 
     // Remove all messages after this one (including assistant responses)
-    const messageIndex = messages.findIndex((m) => m.id === message.id);
+    const messageIndex = messages.findIndex(m => m.id === message.id);
     if (messageIndex === -1) return;
 
     const messagesUpToRetry = messages.slice(0, messageIndex);
@@ -401,8 +366,8 @@ export default function ChatApp() {
   };
 
   const handleEditMessage = (message: Message) => {
-    if (message.role !== "user") return;
-
+    if (message.role !== 'user') return;
+    
     setEditingMessage(message);
     setEditInput(message.content);
   };
@@ -411,19 +376,19 @@ export default function ChatApp() {
     if (!editingMessage || !editInput.trim()) return;
 
     // Find the message index
-    const messageIndex = messages.findIndex((m) => m.id === editingMessage.id);
+    const messageIndex = messages.findIndex(m => m.id === editingMessage.id);
     if (messageIndex === -1) return;
 
     // Update the message content
     const updatedMessage = { ...editingMessage, content: editInput.trim() };
-
+    
     // Remove all messages after this one (including assistant responses)
     const messagesUpToEdit = messages.slice(0, messageIndex);
     setMessages([...messagesUpToEdit, updatedMessage]);
 
     // Clear editing state
     setEditingMessage(null);
-    setEditInput("");
+    setEditInput('');
 
     // Save the updated message to session
     await saveMessageToSession(updatedMessage);
@@ -431,13 +396,13 @@ export default function ChatApp() {
     // Auto-send to get new response
     setIsLoading(true);
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
+      const response = await fetch('/api/chat', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: [updatedMessage],
+          messages: [...messagesUpToEdit, updatedMessage], // Send full chat history up to edited message
           model: selectedModel,
           sessionId: currentSessionId,
           settings: settings,
@@ -448,12 +413,12 @@ export default function ChatApp() {
         const result = await response.json();
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
-          role: "assistant",
+          role: 'assistant',
           content: result.content,
           timestamp: new Date(),
         };
-        setMessages((prev) => [...prev, assistantMessage]);
-
+        setMessages(prev => [...prev, assistantMessage]);
+        
         // Save assistant message to session
         await saveMessageToSession(assistantMessage);
         await loadChatSessions();
@@ -462,7 +427,7 @@ export default function ChatApp() {
         toast.error(`Failed to get response: ${error.details || error.error}`);
       }
     } catch (error) {
-      toast.error("Error sending message");
+      toast.error('Error sending message');
     } finally {
       setIsLoading(false);
     }
@@ -470,7 +435,7 @@ export default function ChatApp() {
 
   const handleCancelEdit = () => {
     setEditingMessage(null);
-    setEditInput("");
+    setEditInput('');
   };
 
   const handlePredefinedPrompt = (prompt: string) => {
@@ -480,42 +445,39 @@ export default function ChatApp() {
 
   // Initialize speech recognition
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
         recognition.continuous = true;
         recognition.interimResults = true;
-        recognition.lang = "en-US";
+        recognition.lang = 'en-US';
 
         recognition.onstart = () => {
           setIsListening(true);
         };
 
         recognition.onresult = (event) => {
-          let transcript = "";
+          let transcript = '';
           for (let i = event.resultIndex; i < event.results.length; i++) {
             if (event.results[i].isFinal) {
               transcript += event.results[i][0].transcript;
             }
           }
           if (transcript) {
-            setInput((prev) => prev + transcript);
+            setInput(prev => prev + transcript);
           }
         };
 
         recognition.onerror = (event) => {
-          console.error("Speech recognition error:", event.error);
+          console.error('Speech recognition error:', event.error);
           setIsListening(false);
-          if (event.error === "not-allowed") {
-            toast.error(
-              "Microphone access denied. Please allow microphone access and try again."
-            );
-          } else if (event.error === "no-speech") {
-            toast.error("No speech detected. Please try again.");
+          if (event.error === 'not-allowed') {
+            toast.error('Microphone access denied. Please allow microphone access and try again.');
+          } else if (event.error === 'no-speech') {
+            toast.error('No speech detected. Please try again.');
           } else {
-            toast.error("Speech recognition error. Please try again.");
+            toast.error('Speech recognition error. Please try again.');
           }
         };
 
@@ -530,7 +492,7 @@ export default function ChatApp() {
 
   const toggleSpeechRecognition = () => {
     if (!speechRecognition) {
-      toast.error("Speech recognition is not supported in this browser.");
+      toast.error('Speech recognition is not supported in this browser.');
       return;
     }
 
@@ -541,47 +503,39 @@ export default function ChatApp() {
       try {
         speechRecognition.start();
       } catch (error) {
-        console.error("Error starting speech recognition:", error);
-        toast.error("Failed to start speech recognition. Please try again.");
+        console.error('Error starting speech recognition:', error);
+        toast.error('Failed to start speech recognition. Please try again.');
       }
     }
   };
 
-  const selectedModelInfo = models.find((m) => m.id === selectedModel);
+  const selectedModelInfo = models.find(m => m.id === selectedModel);
 
   return (
     <>
       <Head>
         <title>AIO Travel Itinerary assistant</title>
-        <meta
-          name="description"
-          content="AI-powered travel itinerary planning assistant"
-        />
+        <meta name="description" content="AI-powered travel itinerary planning assistant" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link
-          rel="icon"
-          href="https://www.vosaio.com/wp-content/uploads/fbrfg/favicon.ico"
-        />
+        <link rel="icon" href="https://www.vosaio.com/wp-content/uploads/fbrfg/favicon.ico" />
       </Head>
 
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex">
         {/* Sidebar for Chat Sessions */}
-        <div className="hidden md:flex w-80 border-r border-border/40 bg-background/50 backdrop-blur-sm flex-col">
+        <div className="hidden md:flex w-64 border-r border-border/40 bg-background/50 backdrop-blur-sm flex-col">
           <div className="p-4 border-b border-border/40">
             <Button onClick={createNewChat} className="w-full" size="sm">
               <Plus className="w-4 h-4 mr-2" />
               New Chat
             </Button>
           </div>
-
+          
           <ScrollArea className="flex-1 p-4">
             {/* Predefined Prompts Section */}
             <div className="mb-6">
               <div className="flex items-center space-x-2 mb-3">
                 <Lightbulb className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-medium text-foreground">
-                  Quick Prompts
-                </h3>
+                <h3 className="text-sm font-medium text-foreground">Quick Prompts</h3>
               </div>
               <div className="space-y-2">
                 {predefinedPrompts.map((prompt, index) => (
@@ -604,9 +558,7 @@ export default function ChatApp() {
             <div>
               <div className="flex items-center space-x-2 mb-3">
                 <History className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-medium text-foreground">
-                  Chat History
-                </h3>
+                <h3 className="text-sm font-medium text-foreground">Chat History</h3>
               </div>
               <div className="space-y-2">
                 {isLoadingSessions ? (
@@ -624,30 +576,35 @@ export default function ChatApp() {
                       key={session.id}
                       className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
                         currentSessionId === session.id
-                          ? "bg-primary/10 border border-primary/20"
-                          : "hover:bg-muted/50"
+                          ? 'bg-primary/10 border border-primary/20'
+                          : 'hover:bg-muted/50'
                       }`}
                       onClick={() => loadChatSession(session.id)}
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {session.title}
-                        </p>
+                        <p className="text-sm font-medium truncate">{session.title}</p>
                         <p className="text-xs text-muted-foreground">
                           {session.messageCount} messages
                         </p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteChatSession(session.id);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center space-x-1">
+                        <ChatRename
+                          sessionId={session.id}
+                          currentTitle={session.title}
+                          onRename={(newTitle) => handleChatRename(session.id, newTitle)}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteChatSession(session.id);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))
                 )}
@@ -659,15 +616,11 @@ export default function ChatApp() {
         {/* Mobile Sidebar */}
         <Sheet>
           <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden fixed top-4 left-4 z-50"
-            >
+            <Button variant="ghost" size="sm" className="md:hidden fixed top-4 left-4 z-50">
               <Menu className="w-5 h-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-80">
+          <SheetContent side="left" className="w-64">
             <SheetHeader>
               <SheetTitle>Menu</SheetTitle>
             </SheetHeader>
@@ -682,9 +635,7 @@ export default function ChatApp() {
               <div className="mb-6">
                 <div className="flex items-center space-x-2 mb-3">
                   <Lightbulb className="w-4 h-4 text-primary" />
-                  <h3 className="text-sm font-medium text-foreground">
-                    Quick Prompts
-                  </h3>
+                  <h3 className="text-sm font-medium text-foreground">Quick Prompts</h3>
                 </div>
                 <div className="space-y-2">
                   {predefinedPrompts.map((prompt, index) => (
@@ -707,9 +658,7 @@ export default function ChatApp() {
               <div>
                 <div className="flex items-center space-x-2 mb-3">
                   <History className="w-4 h-4 text-primary" />
-                  <h3 className="text-sm font-medium text-foreground">
-                    Chat History
-                  </h3>
+                  <h3 className="text-sm font-medium text-foreground">Chat History</h3>
                 </div>
                 <div className="space-y-2">
                   {chatSessions.map((session) => (
@@ -717,30 +666,35 @@ export default function ChatApp() {
                       key={session.id}
                       className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
                         currentSessionId === session.id
-                          ? "bg-primary/10 border border-primary/20"
-                          : "hover:bg-muted/50"
+                          ? 'bg-primary/10 border border-primary/20'
+                          : 'hover:bg-muted/50'
                       }`}
                       onClick={() => loadChatSession(session.id)}
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {session.title}
-                        </p>
+                        <p className="text-sm font-medium truncate">{session.title}</p>
                         <p className="text-xs text-muted-foreground">
                           {session.messageCount} messages
                         </p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteChatSession(session.id);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center space-x-1">
+                        <ChatRename
+                          sessionId={session.id}
+                          currentTitle={session.title}
+                          onRename={(newTitle) => handleChatRename(session.id, newTitle)}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteChatSession(session.id);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -752,7 +706,7 @@ export default function ChatApp() {
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col">
           {/* Header */}
-          <motion.header
+          <motion.header 
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             className="border-b border-border/40 backdrop-blur-sm bg-background/80 sticky top-0 z-40"
@@ -761,32 +715,22 @@ export default function ChatApp() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3 md:ml-0 ml-12">
                   <div className="w-10 h-10 rounded-xl overflow-hidden bg-white flex items-center justify-center">
-                    <img
-                      src="/images/vosaio-logo-2.png"
-                      alt="AIO Travel Logo"
+                    <img 
+                      src="https://www.vosaio.com/wp-content/uploads/2020/02/logo-site-bc.png" 
+                      alt="AIO Travel Logo" 
                       className="w-8 h-8 object-contain"
                     />
                   </div>
                   <div>
-                    <h1 className="text-xl font-bold text-foreground">
-                      AIO Travel Itinerary assistant
-                    </h1>
+                    <h1 className="text-xl font-bold text-foreground">AIO Travel Itinerary assistant</h1>
                     <p className="text-sm text-muted-foreground">
-                      {currentSessionId
-                        ? `Session: ${
-                            chatSessions.find((s) => s.id === currentSessionId)
-                              ?.title || "Current Chat"
-                          }`
-                        : "No active session"}
+                      {currentSessionId ? `Session: ${chatSessions.find(s => s.id === currentSessionId)?.title || 'Current Chat'}` : 'No active session'}
                     </p>
                   </div>
                 </div>
-
+                
                 <div className="flex items-center space-x-4">
-                  <Select
-                    value={selectedModel}
-                    onValueChange={setSelectedModel}
-                  >
+                  <Select value={selectedModel} onValueChange={setSelectedModel}>
                     <SelectTrigger className="w-48">
                       <SelectValue />
                     </SelectTrigger>
@@ -796,9 +740,7 @@ export default function ChatApp() {
                         return (
                           <SelectItem key={model.id} value={model.id}>
                             <div className="flex items-center space-x-2">
-                              <div
-                                className={`w-3 h-3 rounded-full ${model.color}`}
-                              />
+                              <div className={`w-3 h-3 rounded-full ${model.color}`} />
                               <span>{model.name}</span>
                               <Badge variant="secondary" className="text-xs">
                                 {model.provider}
@@ -809,9 +751,9 @@ export default function ChatApp() {
                       })}
                     </SelectContent>
                   </Select>
-                  <SettingsModal
-                    settings={settings}
-                    onSettingsChange={setSettings}
+                  <SettingsModal 
+                    settings={settings} 
+                    onSettingsChange={setSettings} 
                   />
                   <ThemeToggle />
                 </div>
@@ -822,6 +764,7 @@ export default function ChatApp() {
           {/* Chat Messages */}
           <div className="flex-1 container mx-auto px-4 py-6 max-w-4xl">
             <div className="flex flex-col h-[calc(100vh-200px)]">
+              
               {/* Messages Area */}
               <ScrollArea className="flex-1 pr-4">
                 <div className="space-y-6">
@@ -832,9 +775,9 @@ export default function ChatApp() {
                       className="text-center py-12"
                     >
                       <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-white flex items-center justify-center shadow-lg">
-                        <img
-                          src="/images/vosaio-logo-2.png"
-                          alt="AIO Travel Logo"
+                        <img 
+                          src="https://www.vosaio.com/wp-content/uploads/2020/02/logo-site-bc.png" 
+                          alt="AIO Travel Logo" 
                           className="w-12 h-12 object-contain"
                         />
                       </div>
@@ -842,15 +785,13 @@ export default function ChatApp() {
                         Welcome to AIO Travel Itinerary assistant
                       </h2>
                       <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                        Plan your perfect trip with AI-powered travel
-                        assistance. Upload documents and get personalized
-                        itinerary recommendations.
+                        Plan your perfect trip with AI-powered travel assistance. Upload documents and get personalized itinerary recommendations.
                       </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-                        <Card
+                        <Card 
                           {...getRootProps()}
                           className={`p-4 border-dashed border-2 hover:border-primary/50 transition-colors cursor-pointer ${
-                            isDragActive ? "border-primary bg-primary/10" : ""
+                            isDragActive ? 'border-primary bg-primary/10' : ''
                           }`}
                         >
                           <input {...getInputProps()} />
@@ -878,41 +819,27 @@ export default function ChatApp() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
                           transition={{ delay: index * 0.1 }}
-                          className={`group flex ${
-                            message.role === "user"
-                              ? "justify-end"
-                              : "justify-start"
-                          }`}
+                          className={`group flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
-                          <div
-                            className={`flex space-x-3 max-w-[80%] ${
-                              message.role === "user"
-                                ? "flex-row-reverse space-x-reverse"
-                                : ""
-                            }`}
-                          >
-                            <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                message.role === "user"
-                                  ? "bg-primary text-primary-foreground"
-                                  : selectedModelInfo?.color || "bg-secondary"
-                              }`}
-                            >
-                              {message.role === "user" ? (
+                          <div className={`flex space-x-3 max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                              message.role === 'user' 
+                                ? 'bg-primary text-primary-foreground' 
+                                : selectedModelInfo?.color || 'bg-secondary'
+                            }`}>
+                              {message.role === 'user' ? (
                                 <User className="w-4 h-4" />
                               ) : (
                                 <Bot className="w-4 h-4 text-white" />
                               )}
                             </div>
-
+                            
                             <div className="flex-1 relative">
                               {editingMessage?.id === message.id ? (
                                 <div className="space-y-3">
                                   <Textarea
                                     value={editInput}
-                                    onChange={(e) =>
-                                      setEditInput(e.target.value)
-                                    }
+                                    onChange={(e) => setEditInput(e.target.value)}
                                     className="min-h-[100px] resize-none"
                                     placeholder="Edit your message..."
                                   />
@@ -920,60 +847,36 @@ export default function ChatApp() {
                                     <Button size="sm" onClick={handleSaveEdit}>
                                       Save
                                     </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={handleCancelEdit}
-                                    >
+                                    <Button size="sm" variant="outline" onClick={handleCancelEdit}>
                                       Cancel
                                     </Button>
                                   </div>
                                 </div>
                               ) : (
-                                <div
-                                  className={`rounded-2xl px-4 py-3 relative ${
-                                    message.role === "user"
-                                      ? "bg-primary text-primary-foreground"
-                                      : "bg-muted"
-                                  }`}
-                                >
-                                  {message.files &&
-                                    message.files.length > 0 && (
-                                      <div className="mb-3 space-y-2">
-                                        {message.files.map(
-                                          (file, fileIndex) => (
-                                            <div
-                                              key={fileIndex}
-                                              className="flex items-center space-x-2 text-sm opacity-80"
-                                            >
-                                              <FileText className="w-4 h-4" />
-                                              <span>{file.name}</span>
-                                            </div>
-                                          )
-                                        )}
-                                      </div>
-                                    )}
-                                  <p className="whitespace-pre-wrap">
-                                    {message.content}
-                                  </p>
-                                  <div
-                                    className={`text-xs mt-2 opacity-60 ${
-                                      message.role === "user"
-                                        ? "text-primary-foreground"
-                                        : "text-muted-foreground"
-                                    }`}
-                                  >
+                                <div className={`rounded-2xl px-4 py-3 relative ${
+                                  message.role === 'user'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted'
+                                }`}>
+                                  {message.files && message.files.length > 0 && (
+                                    <div className="mb-3 space-y-2">
+                                      {message.files.map((file, fileIndex) => (
+                                        <div key={fileIndex} className="flex items-center space-x-2 text-sm opacity-80">
+                                          <FileText className="w-4 h-4" />
+                                          <span>{file.name}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <p className="whitespace-pre-wrap">{message.content}</p>
+                                  <div className={`text-xs mt-2 opacity-60 ${
+                                    message.role === 'user' ? 'text-primary-foreground' : 'text-muted-foreground'
+                                  }`}>
                                     {message.timestamp.toLocaleTimeString()}
                                   </div>
-
+                                  
                                   {/* Message Actions */}
-                                  <div
-                                    className={`absolute top-2 ${
-                                      message.role === "user"
-                                        ? "left-2"
-                                        : "right-2"
-                                    }`}
-                                  >
+                                  <div className={`absolute top-2 ${message.role === 'user' ? 'left-2' : 'right-2'}`}>
                                     <MessageActions
                                       message={message}
                                       onRetry={handleRetryMessage}
@@ -988,7 +891,7 @@ export default function ChatApp() {
                       ))}
                     </AnimatePresence>
                   )}
-
+                  
                   {isLoading && (
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
@@ -996,25 +899,19 @@ export default function ChatApp() {
                       className="flex justify-start"
                     >
                       <div className="flex space-x-3">
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            selectedModelInfo?.color || "bg-secondary"
-                          }`}
-                        >
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${selectedModelInfo?.color || 'bg-secondary'}`}>
                           <Bot className="w-4 h-4 text-white" />
                         </div>
                         <div className="bg-muted rounded-2xl px-4 py-3">
                           <div className="flex items-center space-x-2">
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            <span className="text-sm text-muted-foreground">
-                              Thinking...
-                            </span>
+                            <span className="text-sm text-muted-foreground">Thinking...</span>
                           </div>
                         </div>
                       </div>
                     </motion.div>
                   )}
-
+                  
                   <div ref={messagesEndRef} />
                 </div>
               </ScrollArea>
@@ -1023,7 +920,7 @@ export default function ChatApp() {
               {uploadedFiles.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
+                  animate={{ opacity: 1, height: 'auto' }}
                   className="mb-4"
                 >
                   <div className="flex flex-wrap gap-2">
@@ -1058,15 +955,15 @@ export default function ChatApp() {
                     <div
                       {...getRootProps()}
                       className={`flex-shrink-0 w-12 h-12 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors ${
-                        isDragActive
-                          ? "border-primary bg-primary/10"
-                          : "border-muted-foreground/30 hover:border-primary/50"
+                        isDragActive 
+                          ? 'border-primary bg-primary/10' 
+                          : 'border-muted-foreground/30 hover:border-primary/50'
                       }`}
                     >
                       <input {...getInputProps()} />
                       <Upload className="w-5 h-5 text-muted-foreground" />
                     </div>
-
+                    
                     <div className="flex-1">
                       <Textarea
                         ref={textareaRef}
@@ -1078,16 +975,16 @@ export default function ChatApp() {
                         rows={1}
                       />
                     </div>
-
+                    
                     <Button
                       onClick={toggleSpeechRecognition}
                       disabled={isLoading}
                       size="icon"
                       variant={isListening ? "default" : "ghost"}
                       className={`w-12 h-12 rounded-xl transition-all ${
-                        isListening
-                          ? "bg-red-500 hover:bg-red-600 text-white animate-pulse"
-                          : "hover:bg-muted"
+                        isListening 
+                          ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' 
+                          : 'hover:bg-muted'
                       }`}
                     >
                       {isListening ? (
@@ -1096,13 +993,10 @@ export default function ChatApp() {
                         <Mic className="w-5 h-5" />
                       )}
                     </Button>
-
+                    
                     <Button
                       onClick={sendMessage}
-                      disabled={
-                        (!input.trim() && uploadedFiles.length === 0) ||
-                        isLoading
-                      }
+                      disabled={(!input.trim() && uploadedFiles.length === 0) || isLoading}
                       size="icon"
                       className="w-12 h-12 rounded-xl"
                     >

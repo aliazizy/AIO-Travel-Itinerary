@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
+import { DEFAULT_SETTINGS, validateSettings, AppSettings } from '@/config/app-config';
 
 interface SettingsConfig {
   fileContentLimit: number;
@@ -118,12 +119,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Get settings from form data or use defaults
     const settingsJson = (req as any).body?.settings;
-    const settings: SettingsConfig = settingsJson ? JSON.parse(settingsJson) : {
-      fileContentLimit: 500,
-      translationLimit: 500,
-      enableTranslation: true,
-      systemPrompt: ''
-    };
+    const settings: SettingsConfig = settingsJson ? validateSettings(JSON.parse(settingsJson)) : DEFAULT_SETTINGS;
 
     // Extract text from the uploaded file
     let extractedText = await extractTextFromFile(file.path, file.mimetype);

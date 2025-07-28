@@ -110,6 +110,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       return res.status(200).json({ session: sessionData.session });
 
+    case 'PATCH':
+      // Update session title (rename)
+      const { sessionId: patchSessionId, title: patchTitle } = req.body;
+      
+      if (!patchSessionId || !chatSessions[patchSessionId]) {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+
+      if (!patchTitle || typeof patchTitle !== 'string' || !patchTitle.trim()) {
+        return res.status(400).json({ error: 'Title is required' });
+      }
+
+      const patchSessionData = chatSessions[patchSessionId];
+      patchSessionData.session.title = patchTitle.trim();
+      patchSessionData.session.updatedAt = new Date().toISOString();
+
+      return res.status(200).json({ session: patchSessionData.session });
+
     case 'DELETE':
       // Delete a chat session
       const { sessionId: deleteSessionId } = req.query;
@@ -122,7 +140,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ message: 'Session deleted successfully' });
 
     default:
-      res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
+      res.setHeader('Allow', ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
       return res.status(405).json({ error: `Method ${method} not allowed` });
   }
 }

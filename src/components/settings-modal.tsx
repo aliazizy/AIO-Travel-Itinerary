@@ -8,11 +8,14 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Settings, Save, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { APP_CONFIG, DEFAULT_SETTINGS, AppSettings, validateSettings } from '@/config/app-config';
 
 export interface SettingsConfig {
   fileContentLimit: number;
   translationLimit: number;
   enableTranslation: boolean;
+  enableWebSearch: boolean;
+  webSearchResultsLimit: number;
   systemPrompt: string;
 }
 
@@ -21,12 +24,7 @@ interface SettingsModalProps {
   onSettingsChange: (settings: SettingsConfig) => void;
 }
 
-const defaultSettings: SettingsConfig = {
-  fileContentLimit: 500,
-  translationLimit: 500,
-  enableTranslation: true,
-  systemPrompt: 'You are AIO Travel Itinerary assistant, a helpful AI assistant specialized in travel planning and itinerary creation. Provide detailed, accurate, and helpful travel advice.',
-};
+const defaultSettings: SettingsConfig = DEFAULT_SETTINGS;
 
 export function SettingsModal({ settings, onSettingsChange }: SettingsModalProps) {
   const [localSettings, setLocalSettings] = useState<SettingsConfig>(settings);
@@ -37,23 +35,27 @@ export function SettingsModal({ settings, onSettingsChange }: SettingsModalProps
   }, [settings]);
 
   const handleSave = () => {
-    // Validate settings
-    if (localSettings.fileContentLimit < 100 || localSettings.fileContentLimit > 10000) {
-      toast.error('File content limit must be between 100 and 10,000 characters');
+    // Validate settings using the config
+    if (localSettings.fileContentLimit < APP_CONFIG.limits.fileContentLimit.min || 
+        localSettings.fileContentLimit > APP_CONFIG.limits.fileContentLimit.max) {
+      toast.error(`File content limit must be between ${APP_CONFIG.limits.fileContentLimit.min} and ${APP_CONFIG.limits.fileContentLimit.max} characters`);
       return;
     }
 
-    if (localSettings.translationLimit < 100 || localSettings.translationLimit > 10000) {
-      toast.error('Translation limit must be between 100 and 10,000 characters');
+    if (localSettings.translationLimit < APP_CONFIG.limits.translationLimit.min || 
+        localSettings.translationLimit > APP_CONFIG.limits.translationLimit.max) {
+      toast.error(`Translation limit must be between ${APP_CONFIG.limits.translationLimit.min} and ${APP_CONFIG.limits.translationLimit.max} characters`);
       return;
     }
 
-    if (localSettings.systemPrompt.trim().length < 10) {
-      toast.error('System prompt must be at least 10 characters long');
+    if (localSettings.systemPrompt.trim().length < APP_CONFIG.limits.systemPrompt.minLength) {
+      toast.error(`System prompt must be at least ${APP_CONFIG.limits.systemPrompt.minLength} characters long`);
       return;
     }
 
-    onSettingsChange(localSettings);
+    // Use validateSettings to ensure consistency
+    const validatedSettings = validateSettings(localSettings);
+    onSettingsChange(validatedSettings);
     setIsOpen(false);
     toast.success('Settings saved successfully');
   };
@@ -95,12 +97,12 @@ export function SettingsModal({ settings, onSettingsChange }: SettingsModalProps
               <Input
                 id="fileContentLimit"
                 type="number"
-                min="100"
-                max="10000"
+                min={APP_CONFIG.limits.fileContentLimit.min}
+                max={APP_CONFIG.limits.fileContentLimit.max}
                 value={localSettings.fileContentLimit}
                 onChange={(e) => setLocalSettings(prev => ({
                   ...prev,
-                  fileContentLimit: parseInt(e.target.value) || 500
+                  fileContentLimit: parseInt(e.target.value) || APP_CONFIG.limits.fileContentLimit.default
                 }))}
                 className="w-full"
               />
@@ -138,17 +140,61 @@ export function SettingsModal({ settings, onSettingsChange }: SettingsModalProps
                 <Input
                   id="translationLimit"
                   type="number"
-                  min="100"
-                  max="10000"
+                  min={APP_CONFIG.limits.translationLimit.min}
+                  max={APP_CONFIG.limits.translationLimit.max}
                   value={localSettings.translationLimit}
                   onChange={(e) => setLocalSettings(prev => ({
                     ...prev,
-                    translationLimit: parseInt(e.target.value) || 500
+                    translationLimit: parseInt(e.target.value) || APP_CONFIG.limits.translationLimit.default
                   }))}
                   className="w-full"
                 />
                 <p className="text-sm text-muted-foreground">
                   Maximum number of characters to translate. Longer texts will be truncated.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Web Search Settings */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-foreground">Web Search</h3>
+            
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="enableWebSearch"
+                checked={localSettings.enableWebSearch}
+                onCheckedChange={(checked) => setLocalSettings(prev => ({
+                  ...prev,
+                  enableWebSearch: checked
+                }))}
+              />
+              <Label htmlFor="enableWebSearch">
+                Enable web search for AI models
+              </Label>
+            </div>
+
+            {localSettings.enableWebSearch && (
+              <div className="space-y-2">
+                <Label htmlFor="webSearchResultsLimit">
+                  Web Search Results Limit
+                </Label>
+                <Input
+                  id="webSearchResultsLimit"
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={localSettings.webSearchResultsLimit}
+                  onChange={(e) => setLocalSettings(prev => ({
+                    ...prev,
+                    webSearchResultsLimit: parseInt(e.target.value) || 5
+                  }))}
+                  className="w-full"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Maximum number of web search results to include in AI context (1-10).
                 </p>
               </div>
             )}
