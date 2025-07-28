@@ -49,7 +49,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Get specific session with messages
         const sessionData = chatSessions[getSessionId as string];
         if (!sessionData) {
-          return res.status(404).json({ error: 'Session not found' });
+          return res.status(404).json({ 
+            error: 'Chat Session not found',
+            details: 'The requested chat session may have been deleted or the server was restarted.'
+          });
         }
         return res.status(200).json(sessionData);
       } else {
@@ -85,7 +88,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { sessionId: updateSessionId, message, newTitle } = req.body;
       
       if (!updateSessionId || !chatSessions[updateSessionId]) {
-        return res.status(404).json({ error: 'Session not found' });
+        return res.status(404).json({ 
+          error: 'Chat Session not found',
+          details: 'The session may have been deleted or the server was restarted. Please create a new chat session.'
+        });
       }
 
       const sessionData = chatSessions[updateSessionId];
@@ -115,7 +121,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { sessionId: patchSessionId, title: patchTitle } = req.body;
       
       if (!patchSessionId || !chatSessions[patchSessionId]) {
-        return res.status(404).json({ error: 'Session not found' });
+        return res.status(404).json({ 
+          error: 'Chat Session not found',
+          details: 'The session may have been deleted or the server was restarted.'
+        });
       }
 
       if (!patchTitle || typeof patchTitle !== 'string' || !patchTitle.trim()) {
@@ -133,7 +142,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { sessionId: deleteSessionId } = req.query;
       
       if (!deleteSessionId || typeof deleteSessionId !== 'string' || !chatSessions[deleteSessionId]) {
-        return res.status(404).json({ error: 'Session not found' });
+        return res.status(404).json({ 
+          error: 'Chat Session not found',
+          details: 'The session may have already been deleted or the server was restarted.'
+        });
       }
 
       delete chatSessions[deleteSessionId];

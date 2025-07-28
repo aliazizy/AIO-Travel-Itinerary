@@ -169,8 +169,20 @@ export default function ChatApp() {
         setCurrentSessionId(sessionId);
         setMessages(data.messages || []);
         setUploadedFiles([]);
+      } else if (response.status === 404) {
+        // Session not found, remove it from the list and show error
+        toast.error('Chat session no longer exists. It may have been deleted or the server was restarted.');
+        setChatSessions(prev => prev.filter(session => session.id !== sessionId));
+        // Clear current session if it was the one that failed to load
+        if (currentSessionId === sessionId) {
+          setCurrentSessionId(null);
+          setMessages([]);
+        }
+      } else {
+        toast.error('Failed to load chat session');
       }
     } catch (error) {
+      console.error('Error loading chat session:', error);
       toast.error('Failed to load chat session');
     }
   };
@@ -208,7 +220,7 @@ export default function ChatApp() {
     if (!currentSessionId) return;
 
     try {
-      await fetch('/api/chat-sessions', {
+      const response = await fetch('/api/chat-sessions', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -218,6 +230,12 @@ export default function ChatApp() {
           message: message,
         }),
       });
+
+      if (response.status === 404) {
+        // Session not found, create a new one
+        console.warn('Session not found, creating new session');
+        await createNewChat();
+      }
     } catch (error) {
       console.error('Failed to save message to session:', error);
     }
